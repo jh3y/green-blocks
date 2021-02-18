@@ -1,25 +1,51 @@
 /* eslint-disable */
+const cheerio = require('cheerio')
 const fetch = require('node-fetch')
-exports.handler = async function(event, context) {
-  try {
-    const response = await fetch('https://icanhazdadjoke.com', {
-      headers: { Accept: 'application/json' },
-    })
-    if (!response.ok) {
-      // NOT res.status >= 200 && res.status < 300
-      return { statusCode: response.status, body: response.statusText }
-    }
-    const data = await response.json()
 
+const MESSAGES = {
+  USERNAME: username => `Username "${username}" does not exist`,
+}
+
+// Merely to check that the username exists
+const validateConfig = async (username) => {
+  const userRequest = await fetch(`https://github.com/${username}`)
+  if (userRequest.status !== 200) throw Error(MESSAGES.USERNAME(username))
+  return false
+}
+
+const getCommits = async (username) => {
+  // Grab the page HTML
+  const PAGE = await (
+    await fetch(`https://github.com/users/${username}/contributions`)
+  ).text()
+  // Use Cheerio to parse the highest commit count for a day
+  const $ = cheerio.load(PAGE)
+  // Instantiate an Array
+  const COUNTS = []
+  // Grab all the commit days from the HTML
+  const COMMIT_DAYS = $('[data-count]')
+  // Loop over the commit days and grab the "data-count" attribute
+  // Push it into the Array
+  COMMIT_DAYS.each((DAY) => {
+    COUNTS.push(parseInt(COMMIT_DAYS[DAY].attribs['data-count'], 10))
+  })
+  return COUNTS
+}
+exports.handler = async (event) => {
+  try {
+    const { username } = event.queryStringParameters
+    await validateConfig(username)
+    const commits = await getCommits(username)
     return {
       statusCode: 200,
-      body: JSON.stringify({ msg: data.joke }),
+      body: JSON.stringify({ commits }),
     }
   } catch (err) {
-    console.log(err) // output to netlify function log
     return {
       statusCode: 500,
-      body: JSON.stringify({ msg: err.message }), // Could be a custom message or object i.e. JSON.stringify(err)
+      body: JSON.stringify({
+        message: err.message,
+      }),
     }
   }
 }

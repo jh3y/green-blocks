@@ -1,7 +1,11 @@
 import 'tailwindcss/tailwind.css'
+import T from 'prop-types'
 
-function GreenBlocks({ Component, pageProps }) {
-  return <Component {...pageProps} />
+const GreenBlocks = ({ Component, pageProps }) => <Component {...pageProps} />
+
+GreenBlocks.propTypes = {
+  Component: T.elementType,
+  pageProps: T.object,
 }
 
 export default GreenBlocks

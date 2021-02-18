@@ -1,8 +1,11 @@
 import { useEffect, useRef } from 'react'
+import useSWR from 'swr'
 import Head from 'next/head'
 import gsap from 'gsap'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { Canvas, useFrame, useThree, extend } from 'react-three-fiber'
+
+const URL = '/.netlify/functions/getGithubActivity'
 
 extend({ OrbitControls })
 
@@ -35,10 +38,8 @@ const Scene = () => {
         duration: 30,
       })
     }
-  }, [groupRef.current])
-  // useFrame(() => {
-  //   // console.info(groupRef.current.rotation)
-  // })
+  }, [])
+
   return (
     <group ref={groupRef} rotation={[0, 0, 0]}>
       <mesh position={[2, 0, 0]}>
@@ -53,7 +54,28 @@ const Scene = () => {
   )
 }
 
+const useActivity = (username) => {
+  const { data, error } = useSWR(`${URL}?username=${username}`)
+  return {
+    data,
+    error,
+    loading: !error && !data,
+  }
+}
+
+const ActivityScene = ({ username }) => {
+  const { data, error, loading } = useActivity(username)
+  if (loading) return <div className="text-blue-500">Loading...</div>
+  if (error) return <div className="text-red-500">Uh Oh</div>
+  return (
+    <div className="text-green-500">{`Username: ${username}. Max Commits: ${Math.max(
+      ...data.commits
+    )}.`}</div>
+  )
+}
+
 export default function Home() {
+  useEffect(() => {})
   return (
     <div>
       <Head>
@@ -63,6 +85,7 @@ export default function Home() {
 
       <main className="min-h-screen prose lg:prose-xl">
         <div className="fixed h-full w-full bg-gray-100 inset-0">
+          <ActivityScene username="jh3y" />
           <Canvas>
             <CameraControls />
             <pointLight position={[10, 10, 10]} />
